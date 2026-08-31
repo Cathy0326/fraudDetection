@@ -1,0 +1,73 @@
+name: fraud-detection
+
+services:
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: fraud-postgres
+    environment:
+      # Read only on first initialisation. Once the volume has data,
+      # changing on these has no effect.
+      POSTGRES_DB: frauddb
+      POSTGRES_USER: fraud
+      POSTGRES_PASSWORD: fraud
+    ports:
+      - "5432:5432"
+    volumes:
+      # PG18+ moved the mount point here from /var/lib/postgresql/data.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud -d frauddb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s   # first initdb is slow; failures here don't count
+
+  redis:
+    image: redis:8-alpine
+    container_name: fraud-redis
+    # Both persistence modes off: this is a disposable counter store,
+    # not a system of record.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  kafka:
+    image: apache/kafka:4.1.2
+    container_name: fraud-kafka
+    ports:
+      - "9092:9092"   # 9093 is controller-internal; the host never calls it
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # LISTENERS = what the broker binds to.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      # ADVERTISED_LISTENERS = the address clients are told to reconnect on
+      # after bootstrap. Wrong value = connects but can't produce or consume.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      # Internal topics default to 3 replicas; a single broker can't start
+      # until these drop to 1.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0   # default 3000ms is pure waiting in dev
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"     # temporary; Phase 1 uses NewTopic beans
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s   # KRaft formats its storage on first boot
+
+volumes:
+  pgdata:
