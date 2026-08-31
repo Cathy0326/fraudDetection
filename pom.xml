@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <!-- POM model version: always 4.0.0 for modern Maven. -->
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ============ PARENT ============ -->
+    <!-- Inherit Spring Boot dependency management (BOM) and plugin config.
+         This is why almost no dependency below needs a version tag:
+         the parent pins one tested, consistent set of versions. -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.16</version>
+        <relativePath/>
+    </parent>
+
+    <!-- ============ COORDINATES ============ -->
+    <groupId>com.cathy</groupId>
+    <artifactId>fraud-detection</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>fraud-detection</name>
+    <description>Bank fraud detection system</description>
+
+    <!-- ============ PROPERTIES ============ -->
+    <properties>
+        <!-- Boot parent reads this to compile against Java 21. -->
+        <java.version>21</java.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- ==================================================== -->
+        <!-- GROUP A: RUNTIME SKELETON (needed in Phase 0 and 1)  -->
+        <!-- ==================================================== -->
+
+        <!-- REST controllers, embedded Tomcat, Jackson JSON. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Production endpoints including /actuator/health. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- JPA, Hibernate, HikariCP pool. Persists to Postgres. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Bean Validation. Lets @Valid keep the controller thin. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Kafka producer and @KafkaListener consumers. -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!-- PostgreSQL JDBC driver. Needed only at runtime. -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Flyway engine: versioned SQL migrations on startup. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <!-- Flyway 10+ needs this jar to recognise PostgreSQL. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- ==================================================== -->
+        <!-- GROUP B: TEST (cross-cutting, from Phase 1 on)       -->
+        <!-- scope=test: for tests only, never shipped            -->
+        <!-- ==================================================== -->
+
+        <!-- Test all-in-one: JUnit 5, Mockito, AssertJ, Spring Test. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Kafka test helpers: @EmbeddedKafka and utils. -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Bridges Boot and Testcontainers: @ServiceConnection. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers JUnit 5 integration. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Real PostgreSQL container during tests. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Real Kafka broker container during tests. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Dev-time only: starts the compose services when the app starts -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-docker-compose</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Testcontainers versions come from the Boot BOM (no version tag). -->
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- Repackages into an executable jar; powers spring-boot:run. -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Coverage. prepare-agent instruments; report writes HTML.
+                 No gate yet; add the 90 percent threshold later. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.15</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

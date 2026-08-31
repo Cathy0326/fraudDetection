@@ -16,6 +16,8 @@ services:
     volumes:
       # PG18+ moved the mount point here from /var/lib/postgresql/data.
       - pgdata:/var/lib/postgresql
+    labels:
+      org.springframework.boot.ignore: "true"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fraud -d frauddb"]
       interval: 10s
@@ -31,6 +33,8 @@ services:
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
       - "6379:6379"
+    labels:
+      org.springframework.boot.ignore: "true"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -62,6 +66,8 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0   # default 3000ms is pure waiting in dev
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"     # temporary; Phase 1 uses NewTopic beans
+    labels:
+      org.springframework.boot.ignore: "true"
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
       interval: 10s

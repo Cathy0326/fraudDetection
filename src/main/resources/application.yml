@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: fraud-detection
+
+  docker:
+    compose:
+      # Start the containers on app startup, but leave them running when the
+      # app stops. The default would stop them, forcing a cold Postgres start
+      # on every run.
+      lifecycle-management: start-only
+
+  datasource:
+    # localhost, not "postgres": the app runs on the host, outside the
+    # compose network, so it goes through the published port.
+    url: jdbc:postgresql://localhost:5432/frauddb
+    username: fraud
+    password: fraud
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema. Hibernate may only verify that entities match
+      # the tables, and fails startup if they don't.
+      ddl-auto: validate
+    # Closes the database session when the request handler returns, instead of
+    # holding it open for the whole HTTP request.
+    open-in-view: false
+
+  flyway:
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Actuator exposes only /health by default over HTTP; this is explicit.
+        include: health
+  endpoint:
+    health:
+      # Shows per-component status (db, diskSpace). Development only —
+      # this leaks infrastructure detail if exposed publicly.
+      show-details: always
+
+logging:
+  level:
+    com.cathy.frauddetection: DEBUG
