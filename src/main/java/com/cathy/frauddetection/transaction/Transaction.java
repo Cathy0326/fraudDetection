@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -47,6 +48,15 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private TransactionStatus status;
+
+    // Integer, never int: int's default 0 would collide with "scored, and clean".
+    // The database keeps NULL meaning "never scored" — the entity must keep it too.
+    @Column(name = "risk_score")
+    private Short riskScore;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "decision", length = 20)
+    private Decision decision;
 
     // insertable = false: the database DEFAULT now() owns this value.
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
@@ -111,5 +121,21 @@ public class Transaction {
 
     public void setStatus(TransactionStatus status) {
         this.status = status;
+    }
+
+    public Short getRiskScore() {
+        return riskScore;
+    }
+
+    public Decision getDecision() {
+        return decision;
+    }
+
+    // One method, not two setters: decision must be derived from riskScore.
+    // Two independent setters would allow contradictory states that no
+    // database CHECK can catch, because each CHECK sees only its own column.
+    public void applyRiskAssessment(int riskScore, Decision decision) {
+        this.riskScore = (short) riskScore;
+        this.decision = decision;
     }
 }
