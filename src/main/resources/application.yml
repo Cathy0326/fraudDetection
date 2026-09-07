@@ -56,3 +56,9 @@ management:
 logging:
   level:
     com.cathy.frauddetection: DEBUG
+
+fraud:
+  rules:
+    # Selects the RuleEvaluator implementation: simple | drools.
+    # Both implementations are always on the classpath; only one is created.
+    engine: simple
