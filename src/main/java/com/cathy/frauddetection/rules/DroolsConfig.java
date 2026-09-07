@@ -1,6 +1,8 @@
 package com.cathy.frauddetection.rules;
 
 import java.nio.charset.StandardCharsets;
+
+import org.drools.model.codegen.ExecutableModelProject;
 import org.kie.api.KieServices;
 import org.kie.api.builder.KieBuilder;
 import org.kie.api.builder.KieFileSystem;
@@ -20,7 +22,7 @@ class DroolsConfig {
     // KieFileSystem is a virtual in-memory project with a Maven-style layout.
     // This path is internal to that virtual project and has nothing to do with
     // where the file actually lives on disk.
-    private static final String DRL_VIRTUAL_PATH = "src/main/resources/" + DRL_CLASSPATH;
+    private static final String DRL_VIRTUAL_PATH = "src/main/resources/com/cathy/frauddetection/rules/fraud-rules.drl";
 
     @Bean
     KieContainer kieContainer() {
@@ -30,9 +32,9 @@ class DroolsConfig {
         // Explicit charset: the single-argument overload uses the platform
         // default, so the same DRL could parse differently on Windows and CI.
         kieFileSystem.write(DRL_VIRTUAL_PATH,
-                kieServices.getResources().newClassPathResource(DRL_CLASSPATH, StandardCharsets.UTF_8));
+                kieServices.getResources().newClassPathResource(DRL_CLASSPATH, StandardCharsets.UTF_8.name()));
 
-        KieBuilder kieBuilder = kieServices.newKieBuilder(kieFileSystem).buildAll();
+        KieBuilder kieBuilder = kieServices.newKieBuilder(kieFileSystem).buildAll(ExecutableModelProject.class);
 
         // DRL compiles at runtime, so a typo is not a compile error. Failing here
         // converts it into a startup failure. Without this the application starts
