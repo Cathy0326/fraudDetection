@@ -23,5 +23,5 @@ public interface RuleEvaluator {
      * @param transaction the transaction to score, never null
      * @return the score and the rules that matched, never null
      */
-    RuleResult evaluate(Transaction transaction);
+    RuleResult evaluate(Transaction transaction,long velocityCount);
 }
