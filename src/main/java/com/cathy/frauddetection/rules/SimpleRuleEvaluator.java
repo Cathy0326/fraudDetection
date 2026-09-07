@@ -5,8 +5,13 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+// Default engine. matchIfMissing = true is load-bearing: if the property is
+// absent the container must still get one RuleEvaluator, otherwise deleting a
+// single config line breaks startup.
+@ConditionalOnProperty(name = "fraud.rules.engine", havingValue = "simple", matchIfMissing = true)
 @Component
 class SimpleRuleEvaluator implements RuleEvaluator {
 
