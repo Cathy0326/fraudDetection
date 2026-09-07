@@ -111,6 +111,18 @@
         </dependency>
 
         <!-- ==================================================== -->
+        <!-- GROUP D: VELOCITY STORE (Phase 4)                    -->
+        <!-- ==================================================== -->
+
+        <!-- Lettuce client plus the RedisTemplate / StringRedisTemplate
+             auto-configuration. No version tag: unlike Drools, Spring Data
+             Redis IS managed by the Boot BOM. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- ==================================================== -->
         <!-- GROUP B: TEST (cross-cutting, from Phase 1 on)       -->
         <!-- scope=test: for tests only, never shipped            -->
         <!-- ==================================================== -->
