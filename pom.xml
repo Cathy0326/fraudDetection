@@ -28,6 +28,9 @@
     <properties>
         <!-- Boot parent reads this to compile against Java 21. -->
         <java.version>21</java.version>
+        <!-- Boot's BOM does not manage Drools, so this is the one
+            dependency family whose version we pin ourselves. -->
+        <drools.version>10.2.0</drools.version>
     </properties>
 
     <dependencies>
@@ -83,6 +86,28 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- ==================================================== -->
+        <!-- GROUP C: RULE ENGINE (Phase 3)                       -->
+        <!-- ==================================================== -->
+
+        <!-- Aggregator for the Drools runtime plus the DRL compiler.
+             Drools 6/7 tutorials use drools-core + drools-compiler;
+             that pair is superseded and leaves jars missing here. -->
+        <dependency>
+            <groupId>org.drools</groupId>
+            <artifactId>drools-engine</artifactId>
+            <version>${drools.version}</version>
+        </dependency>
+
+        <!-- drools-engine deliberately omits XML support (Rule Units
+             need no kmodule descriptor). Without this the project still
+             compiles and fails only when the KieContainer is built. -->
+        <dependency>
+            <groupId>org.drools</groupId>
+            <artifactId>drools-xml-support</artifactId>
+            <version>${drools.version}</version>
         </dependency>
 
         <!-- ==================================================== -->
