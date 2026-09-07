@@ -1,0 +1,30 @@
+package com.cathy.frauddetection.rules;
+
+import com.cathy.frauddetection.transaction.Transaction;
+import com.cathy.frauddetection.rules.RuleHit;
+import java.math.BigDecimal;
+
+// The RHS cannot return a value, so matched rules are collected into a list
+// supplied by the caller before fireAllRules().
+// RuleHit only, never a score: summing stays in RuleResult.from so both
+// evaluators are physically unable to disagree about the total.
+global java.util.List hits;
+
+// compareTo, not "amount > 10000". Drools would coerce the literal itself,
+// but that coercion is the engine's semantics, not ours. The Java evaluator
+// uses compareTo because equals also compares scale; the DRL matches it
+// literally so the two implementations cannot diverge on a boundary value.
+rule "AMOUNT_THRESHOLD"
+when
+    Transaction( amount.compareTo(new BigDecimal("10000")) > 0 )
+then
+    hits.add(new RuleHit("AMOUNT_THRESHOLD", 40));
+end
+
+// "in" is DRL syntax, not Java. No collection is allocated per evaluation.
+rule "HIGH_RISK_COUNTRY"
+when
+    Transaction( destinationCountry in ("IR", "KP", "SY", "CU") )
+then
+    hits.add(new RuleHit("HIGH_RISK_COUNTRY", 40));
+end
