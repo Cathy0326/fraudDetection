@@ -8,6 +8,7 @@ import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
+import jakarta.validation.constraints.Pattern;
 
 /**
  * Inbound HTTP contract. Separate from both the entity and the event:
@@ -29,7 +30,7 @@ public record TransactionRequest(
         @NotBlank @Size(min = 3, max = 3)
         String currency,
 
-        @NotBlank @Size(min = 2, max = 2)
+        @NotBlank @Size(min = 2, max = 2) @Pattern(regexp = "[A-Z]{2}")
         String destinationCountry,
 
         @NotBlank @Size(max = 20)
