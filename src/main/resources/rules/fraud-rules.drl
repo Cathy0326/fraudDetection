@@ -3,6 +3,7 @@ package com.cathy.frauddetection.rules;
 import com.cathy.frauddetection.transaction.Transaction;
 import com.cathy.frauddetection.rules.RuleHit;
 import java.math.BigDecimal;
+import com.cathy.frauddetection.rules.VelocityCount;
 
 // The RHS cannot return a value, so matched rules are collected into a list
 // supplied by the caller before fireAllRules().
@@ -27,4 +28,11 @@ when
     Transaction( destinationCountry in ("IR", "KP", "SY", "CU") )
 then
     hits.add(new RuleHit("HIGH_RISK_COUNTRY", 40));
+end
+
+rule "VELOCITY_LIMIT"
+when
+    VelocityCount( count > limit )
+then
+    hits.add(new RuleHit("VELOCITY_LIMIT", 40));
 end
