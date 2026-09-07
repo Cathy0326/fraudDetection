@@ -1,6 +1,8 @@
 package com.cathy.frauddetection.transaction;
 
 import com.cathy.frauddetection.config.KafkaTopicConfig;
+import com.cathy.frauddetection.rules.RuleEvaluator;
+import com.cathy.frauddetection.rules.RuleResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -14,8 +16,14 @@ class TransactionConsumer {
 
     private final TransactionRepository repository;
 
-    TransactionConsumer(TransactionRepository repository) {
+    // The interface, never SimpleRuleEvaluator. Phase 3 swaps in Drools
+    // without touching this class — that is the whole point of the strategy.
+    private final RuleEvaluator ruleEvaluator;
+
+    TransactionConsumer(TransactionRepository repository,RuleEvaluator ruleEvaluator) {
+
         this.repository = repository;
+        this.ruleEvaluator = ruleEvaluator;
     }
 
     // @Transactional works here: the call comes from Spring's listener container,
@@ -31,8 +39,18 @@ class TransactionConsumer {
                         log.debug("Already processed, skipping ref={}", event.transactionRef());
                         return;
                     }
+
+                    // Orchestration only. This class decides nothing:
+                    // the evaluator decides what matched, RuleResult.from decides
+                    // the score, Decision.fromRiskScore decides the band.
+                    RuleResult result = ruleEvaluator.evaluate(transaction);
+                    Decision decision = Decision.fromRiskScore(result.riskScore());
+
                     transaction.setStatus(TransactionStatus.PROCESSED);
-                    log.info("Processed transactionRef={}", event.transactionRef());
+                    transaction.applyRiskAssessment(result.riskScore(), decision);
+
+                    log.info("Processed transactionRef={} score={} decision={} hits={}",
+                            event.transactionRef(),result.riskScore(),decision,result.hits().size() );
                 },
                 () -> log.error("No row for transactionId={}", event.transactionId()));
     }
