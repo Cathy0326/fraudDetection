@@ -8,5 +8,5 @@ package com.cathy.frauddetection.rules;
 // limit travels with count so the DRL can compare field against field. That
 // keeps the threshold in one place — application.yml — instead of repeating
 // it as a literal in the DRL, which is what the amount rule still does.
-record VelocityCount(long count, long limit) {
+public record VelocityCount(long count, long limit) {
 }
