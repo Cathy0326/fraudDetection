@@ -1,0 +1,47 @@
+# Test profile. Loaded on top of the main application.yml when a test class
+# is annotated with @ActiveProfiles("test").
+#
+# TRAP: this file must NOT be named application.yml. A same-named file on the
+# test classpath replaces the main configuration entirely instead of merging
+# with it, silently dropping Flyway, ddl-auto and every fraud.* property.
+
+spring:
+
+  # No datasource or redis block on purpose.
+  # Testcontainers maps container ports to random free host ports, so the
+  # addresses are only known at runtime. @ServiceConnection publishes them as
+  # ConnectionDetails beans, and beans win over properties — a hardcoded
+  # address here would either fail to connect or, worse, hit the real
+  # development database and pollute it.
+
+  kafka:
+    listener:
+      # No Kafka broker runs during tests. Without this the @KafkaListener
+      # container starts and retries the connection for the whole test run.
+      # The consumer's logic is tested by calling the method directly.
+      auto-startup: false
+
+logging:
+  level:
+    # Print the SQL that Specifications generate. The assertions check row
+    # counts; the log shows the WHERE clause that produced them. Two signals
+    # for the same behaviour rather than one.
+    org.hibernate.SQL: DEBUG
+
+fraud:
+  rules:
+    # Pinned, not inherited. The main config's engine value is an operational
+    # switch; if tests followed it, flipping it for a demo would silently
+    # change which implementation the rule tests exercise. Tests that need the
+    # other engine declare it themselves with @TestPropertySource.
+    engine: simple
+
+  velocity:
+    # Deliberately much shorter than production's 1h.
+    # TTL is reported in whole seconds. With a 1h window, four rapid
+    # increments read ~3600 whether EXPIRE runs once or every time — the
+    # observation cannot tell the two implementations apart. A 10s window
+    # lets a test increment, wait, increment again, and assert the TTL has
+    # kept counting down instead of being reset.
+    window: 10s
+    limit: 3
