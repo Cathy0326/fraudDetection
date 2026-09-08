@@ -72,7 +72,7 @@ fraud:
   rules:
     # Selects the RuleEvaluator implementation: simple | drools.
     # Both implementations are always on the classpath; only one is created.
-    engine: simple
+    engine: drools
 
   velocity:
     # Duration, not a bare number: "1h" carries its unit in the type.
