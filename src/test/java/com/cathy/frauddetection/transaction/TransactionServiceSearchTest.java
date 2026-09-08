@@ -32,15 +32,12 @@ class TransactionServiceSearchTest extends AbstractIntegrationTest {
     @Autowired
     private TestEntityManager entityManager;
 
-    // TransactionService is not picked up by @DataJpaTest's slice (it only
-    // autoconfigures JPA components), so it is constructed by hand here. The
-    // producer is mocked because these tests only exercise search(), which
-    // never calls it. This means @Transactional on TransactionService itself
-    // is not going through a real AOP proxy in this test — correctness here
-    // relies on @DataJpaTest's own per-method transaction, not on the
-    // annotation being honoured. That gap is deliberate, not overlooked.
-    private final TransactionService service =
-            new TransactionService(repository, mock(TransactionProducer.class));
+    private TransactionService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        service = new TransactionService(repository, mock(TransactionProducer.class));
+    }
 
     private Transaction persist(String accountId, BigDecimal amount, String country, Instant occurredAt) {
         Transaction transaction = new Transaction(
