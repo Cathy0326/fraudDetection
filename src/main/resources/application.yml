@@ -57,7 +57,7 @@ management:
     web:
       exposure:
         # Actuator exposes only /health by default over HTTP; this is explicit.
-        include: health
+        include: health,prometheus
   endpoint:
     health:
       # Shows per-component status (db, diskSpace). Development only —
@@ -72,7 +72,7 @@ fraud:
   rules:
     # Selects the RuleEvaluator implementation: simple | drools.
     # Both implementations are always on the classpath; only one is created.
-    engine: drools
+    engine: simple
 
   velocity:
     # Duration, not a bare number: "1h" carries its unit in the type.
