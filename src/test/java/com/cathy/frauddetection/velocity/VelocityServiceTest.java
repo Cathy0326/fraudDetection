@@ -52,7 +52,7 @@ class VelocityServiceTest extends AbstractIntegrationTest {
         assertThat(redis.hasKey(accountId)).isFalse();
     }
 
-    // The debt this project has been carrying since Phase 4: TTL is reported
+    // this project has been carrying it since Phase 4: TTL is reported
     // in whole seconds, so a single snapshot can't distinguish "EXPIRE ran
     // once" from "EXPIRE ran every time" — both would read close to the full
     // window right after creation. Waiting, then calling again, and checking
