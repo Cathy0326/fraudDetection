@@ -123,6 +123,22 @@
         </dependency>
 
         <!-- ==================================================== -->
+        <!-- GROUP E: METRICS (Phase 6)                           -->
+        <!-- ==================================================== -->
+
+        <!-- Concrete MeterRegistry plus the /actuator/prometheus endpoint.
+             micrometer-core already arrives via starter-actuator, so the
+             Counter/Timer API compiles without this. What this adds is a
+             registry whose full contents can be read from outside: with the
+             default SimpleMeterRegistry a mistyped metric name is
+             indistinguishable from a correct one. No version tag: managed
+             by the Boot BOM, unlike Drools. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- ==================================================== -->
         <!-- GROUP B: TEST (cross-cutting, from Phase 1 on)       -->
         <!-- scope=test: for tests only, never shipped            -->
         <!-- ==================================================== -->
