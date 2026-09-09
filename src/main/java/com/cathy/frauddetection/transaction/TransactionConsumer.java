@@ -21,14 +21,17 @@ class TransactionConsumer {
     // without touching this class — that is the whole point of the strategy.
     private final RuleEvaluator ruleEvaluator;
     private final VelocityService velocityService;
+    private final TransactionMetrics metrics;
 
     TransactionConsumer(TransactionRepository repository,
                         RuleEvaluator ruleEvaluator,
-                        VelocityService velocityService) {
+                        VelocityService velocityService,
+                        TransactionMetrics metrics) {
 
         this.repository = repository;
         this.ruleEvaluator = ruleEvaluator;
         this.velocityService = velocityService;
+        this.metrics = metrics;
     }
 
     // @Transactional works here: the call comes from Spring's listener container,
@@ -46,14 +49,14 @@ class TransactionConsumer {
                     }
                     long velocityCount = velocityService.recordAndCount(transaction.getAccountId());
 
-                    // Orchestration only. This class decides nothing:
-                    // the evaluator decides what matched, RuleResult.from decides
-                    // the score, Decision.fromRiskScore decides the band.
-                    RuleResult result = ruleEvaluator.evaluate(transaction,velocityCount);
+                    RuleResult result = metrics.timeEvaluation(
+                            () -> ruleEvaluator.evaluate(transaction,velocityCount));
                     Decision decision = Decision.fromRiskScore(result.riskScore());
 
                     transaction.setStatus(TransactionStatus.PROCESSED);
                     transaction.applyRiskAssessment(result.riskScore(), decision);
+                    metrics.countDecision(decision);
+                    metrics.countRuleHits(result.hits());
 
                     log.info("Processed transactionRef={} velocity={} score={} decision={} hits={}",
                             event.transactionRef(),velocityCount, result.riskScore(),decision,result.hits().size() );

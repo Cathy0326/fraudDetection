@@ -15,12 +15,14 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.BeforeEach;
 
 // No Spring context: the constructor is plain dependency injection, so
 // MockitoExtension can wire three fake collaborators into it directly.
@@ -38,12 +40,18 @@ class TransactionConsumerTest {
     private VelocityService velocityService;
 
     private TransactionConsumer consumer;
+    private TransactionMetrics metrics;
+
+    @BeforeEach
+    void setUpMetrics(){
+        metrics = new TransactionMetrics(new SimpleMeterRegistry(),"simple");
+    }
 
     // Constructed manually in each test, not via @InjectMocks, so the three
     // mocks above are visible by name when reading a failing test — @InjectMocks
     // would hide which mock plugs into which constructor position.
     private TransactionEvent eventOf(Transaction transaction) {
-        consumer = new TransactionConsumer(repository, ruleEvaluator, velocityService);
+        consumer = new TransactionConsumer(repository, ruleEvaluator, velocityService,metrics);
         when(repository.findById(1L)).thenReturn(Optional.of(transaction));
         return new TransactionEvent(1L, transaction.getTransactionRef(), transaction.getAccountId(),
                 transaction.getAmount(), transaction.getCurrency(), transaction.getDestinationCountry(),
@@ -96,7 +104,7 @@ class TransactionConsumerTest {
     // code defends against it), neither collaborator should be touched.
     @Test
     void missingRowSkipsVelocityAndEvaluation() {
-        consumer = new TransactionConsumer(repository, ruleEvaluator, velocityService);
+        consumer = new TransactionConsumer(repository, ruleEvaluator, velocityService,metrics);
         when(repository.findById(99L)).thenReturn(Optional.empty());
         TransactionEvent event = new TransactionEvent(99L, "TX-MISSING", "ACC-TEST",
                 new BigDecimal("500.00"), "EUR", "IE", Instant.now());
