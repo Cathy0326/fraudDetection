@@ -1,12 +1,12 @@
 package com.cathy.frauddetection.transaction;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.cathy.frauddetection.alert.AlertService;
 import com.cathy.frauddetection.rules.RuleEvaluator;
 import com.cathy.frauddetection.rules.RuleHit;
 import com.cathy.frauddetection.rules.RuleResult;
@@ -38,9 +38,11 @@ class TransactionConsumerTest {
 
     @Mock
     private VelocityService velocityService;
-
     private TransactionConsumer consumer;
     private TransactionMetrics metrics;
+
+    @Mock
+    private AlertService alertService;
 
     @BeforeEach
     void setUpMetrics(){
@@ -51,7 +53,7 @@ class TransactionConsumerTest {
     // mocks above are visible by name when reading a failing test — @InjectMocks
     // would hide which mock plugs into which constructor position.
     private TransactionEvent eventOf(Transaction transaction) {
-        consumer = new TransactionConsumer(repository, ruleEvaluator, velocityService,metrics);
+        consumer = new TransactionConsumer(repository, ruleEvaluator, velocityService,metrics,alertService);
         when(repository.findById(1L)).thenReturn(Optional.of(transaction));
         return new TransactionEvent(1L, transaction.getTransactionRef(), transaction.getAccountId(),
                 transaction.getAmount(), transaction.getCurrency(), transaction.getDestinationCountry(),
@@ -83,6 +85,39 @@ class TransactionConsumerTest {
         order.verify(ruleEvaluator).evaluate(any(), anyLong());
     }
 
+    // Alert creation must sit behind the guard like recordAndCount does.
+    // A duplicate delivery that got past the guard would
+    // hit the unique constraint, throw, and — with no DLQ — retry forever.
+    @Test
+    void createsAlertAfterGuardForNonApprovedTransaction() {
+        Transaction transaction = pendingTransaction();
+        TransactionEvent event = eventOf(transaction);
+        when(velocityService.recordAndCount(transaction.getAccountId())).thenReturn(1L);
+        List<RuleHit> hits = List.of(new RuleHit("AMOUNT_THRESHOLD", 40));
+        when(ruleEvaluator.evaluate(any(), anyLong())).thenReturn(RuleResult.from(hits));
+
+        consumer.consume(event);
+
+        // id is null here: the entity was built in-memory, never persisted.
+        verify(alertService).createIfNeeded(any(), eq(40), eq(Decision.REVIEW), eq(hits));
+
+        InOrder order = Mockito.inOrder(velocityService, alertService);
+        order.verify(velocityService).recordAndCount(transaction.getAccountId());
+        order.verify(alertService).createIfNeeded(any(), anyInt(), any(), any());
+    }
+
+    @Test
+    void callsAlertServiceEvenWhenApproved() {
+        Transaction transaction = pendingTransaction();
+        TransactionEvent event = eventOf(transaction);
+        when(velocityService.recordAndCount(transaction.getAccountId())).thenReturn(1L);
+        when(ruleEvaluator.evaluate(any(), anyLong())).thenReturn(RuleResult.from(List.of()));
+
+        consumer.consume(event);
+
+        verify(alertService).createIfNeeded(any(), eq(0), eq(Decision.APPROVE), eq(List.of()));
+    }
+
     // The other half of the same guarantee: an already-processed transaction
     // must short-circuit before either side effect. This is the scenario the
     // idempotency guard exists to prevent — testing only the happy path would
@@ -97,6 +132,7 @@ class TransactionConsumerTest {
 
         verify(velocityService, never()).recordAndCount(any());
         verify(ruleEvaluator, never()).evaluate(any(), anyLong());
+        verify(alertService,never()).createIfNeeded(any(),anyInt(),any(),any());
     }
 
     // The ifPresentOrElse's other branch. If the row genuinely doesn't exist
@@ -104,7 +140,7 @@ class TransactionConsumerTest {
     // code defends against it), neither collaborator should be touched.
     @Test
     void missingRowSkipsVelocityAndEvaluation() {
-        consumer = new TransactionConsumer(repository, ruleEvaluator, velocityService,metrics);
+        consumer = new TransactionConsumer(repository, ruleEvaluator,velocityService,metrics,alertService);
         when(repository.findById(99L)).thenReturn(Optional.empty());
         TransactionEvent event = new TransactionEvent(99L, "TX-MISSING", "ACC-TEST",
                 new BigDecimal("500.00"), "EUR", "IE", Instant.now());
@@ -113,6 +149,7 @@ class TransactionConsumerTest {
 
         verify(velocityService, never()).recordAndCount(any());
         verify(ruleEvaluator, never()).evaluate(any(), anyLong());
+        verify(alertService, never()).createIfNeeded(any(), anyInt(), any(), any());
     }
 
     // Confirms the entity is actually mutated with the evaluator's output,
