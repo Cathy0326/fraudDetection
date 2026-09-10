@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import com.cathy.frauddetection.alert.AlertNotFoundException;
 
 /**
  * Maps application exceptions to RFC 9457 problem responses.
@@ -46,6 +47,18 @@ class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT, exception.getMessage());
         problem.setTitle("Transaction already exists");
+        return problem;
+    }
+
+    // 404, not 400: the id is a well-formed long, it just points at nothing.
+    // A 400 would tell the client to fix its request format, which is already fine.
+    @ExceptionHandler(AlertNotFoundException.class)
+    ProblemDetail handleAlertNotFound(AlertNotFoundException exception) {
+        log.warn("Review target missing: {}", exception.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, exception.getMessage());
+        problem.setTitle("Alert not found");
         return problem;
     }
 }
