@@ -1,5 +1,6 @@
 package com.cathy.frauddetection.web;
 
+import com.cathy.frauddetection.alert.InvalidReviewOutcomeException;
 import com.cathy.frauddetection.transaction.DuplicateTransactionException;
 import com.cathy.frauddetection.transaction.InvalidSearchCriteriaException;
 import org.slf4j.Logger;
@@ -59,6 +60,18 @@ class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, exception.getMessage());
         problem.setTitle("Alert not found");
+        return problem;
+    }
+
+    // 400: the body parses and the enum value exists, but OPEN is a starting
+    // state, not something a review can produce. Client's mistake, so no stack.
+    @ExceptionHandler(InvalidReviewOutcomeException.class)
+    ProblemDetail handleInvalidReviewOutcome(InvalidReviewOutcomeException exception) {
+        log.warn("Rejected review: {}", exception.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, exception.getMessage());
+        problem.setTitle("Invalid review outcome");
         return problem;
     }
 }
