@@ -6,3 +6,7 @@
 *.log
 body.json
 post-alerts.ps1
+frontend/node_modules/
+frontend/dist/
+*.local
+.env
