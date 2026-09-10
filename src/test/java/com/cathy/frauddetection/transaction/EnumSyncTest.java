@@ -3,6 +3,7 @@ package com.cathy.frauddetection.transaction;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.cathy.frauddetection.AbstractIntegrationTest;
+import com.cathy.frauddetection.alert.AlertStatus;
 import jakarta.persistence.EntityManager;
 import java.util.Arrays;
 import java.util.List;
@@ -72,5 +73,38 @@ class EnumSyncTest extends AbstractIntegrationTest {
         assertThat(enumValues)
                 .as("Decision.values() must match ck_transactions_decision exactly")
                 .containsExactlyInAnyOrderElementsOf(databaseValues);
+    }
+
+    @Test
+    void alertStatusEnumMatchesDatabaseCheckConstraint() {
+        List<String> databaseValues = allowedValuesFor("ck_alerts_status");
+        List<String> enumValues = Arrays.stream(AlertStatus.values())
+                .map(Enum::name)
+                .collect(Collectors.toList());
+
+        assertThat(enumValues)
+                .as("AlertStatus.values() must match ck_alerts_status exactly")
+                .containsExactlyInAnyOrderElementsOf(databaseValues);
+    }
+
+    @Test
+    void alertDecisionCheckConstraintExcludesApprove() {
+        // Not a parity check like the three tests above: ck_alerts_decision does NOT
+        // allow every Decision value. An alert only exists for a non-approved
+        // transaction, so APPROVE is deliberately excluded from the constraint.
+        // Asserting "database subset of Decision.values()" would pass even if BLOCK
+        // silently vanished from the constraint — pin the exact allowed set instead,
+        // and separately confirm APPROVE still exists on the enum (if it's ever
+        // removed, the "APPROVE is impossible here" comment above becomes stale).
+        List<String> databaseValues = allowedValuesFor("ck_alerts_decision");
+
+        assertThat(databaseValues)
+                .as("ck_alerts_decision must allow exactly REVIEW and BLOCK")
+                .containsExactlyInAnyOrder(Decision.REVIEW.name(), Decision.BLOCK.name());
+
+        assertThat(Arrays.stream(Decision.values()).map(Enum::name))
+                .as("Decision must still define APPROVE — if this fails, the exclusion "
+                        + "comment on ck_alerts_decision is out of date")
+                .contains(Decision.APPROVE.name());
     }
 }
