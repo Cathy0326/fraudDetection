@@ -16,6 +16,9 @@ import java.util.Objects;
 @Table(name = "alerts")
 public class Alert {
 
+    /** How triggered_rules is encoded in the column. Owned here because the
+     *  encoded string is this entity's field. */
+    static final String RULE_SEPARATOR = ",";
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

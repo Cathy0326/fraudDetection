@@ -20,9 +20,6 @@ record AlertResponse(
         AlertStatus status,
         Instant createdAt,
         Instant reviewedAt) {
-
-    private static final String RULE_SEPARATOR = ",";
-
     // Comma joining is a storage choice. The API exposes the structure, not the
     // encoding, so the client never has to know about the separator.
     static AlertResponse from(Alert alert) {
@@ -43,6 +40,6 @@ record AlertResponse(
         if (joined == null || joined.isBlank()) {
             return List.of();
         }
-        return List.of(joined.split(RULE_SEPARATOR));
+        return List.of(joined.split(Alert.RULE_SEPARATOR));
     }
 }

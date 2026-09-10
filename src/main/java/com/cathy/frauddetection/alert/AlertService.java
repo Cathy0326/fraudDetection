@@ -12,8 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AlertService {
 
-    private static final String RULE_SEPARATOR = ",";
-
     private final AlertRepository alertRepository;
 
     AlertService(AlertRepository alertRepository) {
@@ -62,6 +60,6 @@ public class AlertService {
     private String joinRuleCodes(List<RuleHit> hits) {
         return hits.stream()
                 .map(RuleHit::ruleCode)
-                .collect(Collectors.joining(RULE_SEPARATOR));
+                .collect(Collectors.joining(Alert.RULE_SEPARATOR));
     }
 }
