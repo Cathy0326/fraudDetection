@@ -5,3 +5,4 @@
 .vscode/
 *.log
 body.json
+post-alerts.ps1
