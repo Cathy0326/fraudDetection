@@ -1,5 +1,6 @@
 package com.cathy.frauddetection.transaction;
 
+import com.cathy.frauddetection.alert.AlertService;
 import com.cathy.frauddetection.config.KafkaTopicConfig;
 import com.cathy.frauddetection.rules.RuleEvaluator;
 import com.cathy.frauddetection.rules.RuleResult;
@@ -22,16 +23,19 @@ class TransactionConsumer {
     private final RuleEvaluator ruleEvaluator;
     private final VelocityService velocityService;
     private final TransactionMetrics metrics;
+    private final AlertService alertService;
 
     TransactionConsumer(TransactionRepository repository,
                         RuleEvaluator ruleEvaluator,
                         VelocityService velocityService,
-                        TransactionMetrics metrics) {
+                        TransactionMetrics metrics,
+                        AlertService alertService) {
 
         this.repository = repository;
         this.ruleEvaluator = ruleEvaluator;
         this.velocityService = velocityService;
         this.metrics = metrics;
+        this.alertService = alertService;
     }
 
     // @Transactional works here: the call comes from Spring's listener container,
@@ -55,6 +59,9 @@ class TransactionConsumer {
 
                     transaction.setStatus(TransactionStatus.PROCESSED);
                     transaction.applyRiskAssessment(result.riskScore(), decision);
+
+                    alertService.createIfNeeded(
+                            transaction.getId(),result.riskScore(),decision, result.hits());
                     metrics.countDecision(decision);
                     metrics.countRuleHits(result.hits());
 
