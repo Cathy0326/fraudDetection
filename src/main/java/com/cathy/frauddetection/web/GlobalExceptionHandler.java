@@ -7,9 +7,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.cathy.frauddetection.alert.AlertNotFoundException;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import org.springframework.validation.BindException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * Maps application exceptions to RFC 9457 problem responses.
@@ -72,6 +78,67 @@ class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, exception.getMessage());
         problem.setTitle("Invalid review outcome");
+        return problem;
+    }
+
+    // 400: the query string names a real parameter, but the value cannot become
+// the parameter's type (e.g. status=WRONG when status is an AlertStatus).
+// This fires before our own code runs — Spring's binder rejects the request
+// during argument resolution, for simple @RequestParam bindings only.
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        log.warn("Rejected parameter: {}", exception.getMessage());
+
+        String detail = "Parameter '" + exception.getName() + "' has invalid value '"
+                + exception.getValue() + "'";
+        Class<?> requiredType = exception.getRequiredType();
+        if (requiredType != null && requiredType.isEnum()) {
+            detail += "; must be one of " + Arrays.toString(requiredType.getEnumConstants());
+        }
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        problem.setTitle("Invalid parameter");
+        return problem;
+    }
+
+    // 400: TransactionSearchCriteria is bound as one object (no @RequestParam on
+// individual fields — see its javadoc), so Spring collects every field
+// conversion failure into one BindException instead of throwing on the first.
+// All failures are reported together: a client who mistyped two filters at
+// once should not have to fix them one request at a time.
+    @ExceptionHandler(BindException.class)
+    ProblemDetail handleBindFailure(BindException exception) throws BindException {
+        if(exception instanceof MethodArgumentNotValidException){
+            throw exception;
+    }
+        log.warn("Rejected search binding: {}", exception.getMessage());
+
+        String detail = exception.getFieldErrors().stream()
+                .map(error -> error.getField() + " has invalid value '"
+                        + error.getRejectedValue() + "'")
+                .collect(Collectors.joining("; "));
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        problem.setTitle("Invalid search parameter");
+        return problem;
+    }
+
+    // 400: the JSON is syntactically valid but a field's value cannot become its
+// target type — e.g. {"status":"WRONG"} for an AlertStatus. Distinct from
+// InvalidReviewOutcomeException: that one fires after the body parses
+// successfully and rejects a real enum value (OPEN) for business reasons;
+// this one fires when the value never became a valid AlertStatus at all.
+// Detail is a fixed string, not exception.getMessage() — Jackson's message
+// here includes internal class/field paths, and InvalidSearchCriteriaException's
+// rule applies equally: only echo values the client already sent, never our
+// own internals.
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ProblemDetail handleUnreadableBody(HttpMessageNotReadableException exception) {
+        log.warn("Rejected request body: {}", exception.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Request body could not be parsed");
+        problem.setTitle("Malformed request body");
         return problem;
     }
 }
