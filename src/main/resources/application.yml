@@ -81,3 +81,13 @@ fraud:
     # The number of transactions ALLOWED in the window. The rule fires on
     # count > limit, so the 4th transaction in the window is the first hit.
     limit: 3
+
+jwt:
+  # No default on purpose: an unset secret must fail startup, not fall back to
+  # a value that would be identical in every public clone of this repository.
+  secret: ${JWT_SECRET}
+  # Short-lived by design: JWTs cannot be revoked, so expiry is the only
+  # available exit. 1h is the balance for a dashboard session.
+  expiration: 1h
+
+
