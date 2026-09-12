@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.cathy.frauddetection.auth.JwtService;
+import com.cathy.frauddetection.config.SecurityConfig;
 import com.cathy.frauddetection.transaction.Decision;
 import java.util.List;
 import org.junit.jupiter.api.Assertions;
@@ -18,23 +20,29 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 
 // MVC slice: under test is the HTTP contract — status codes, JSON shape,
 // parameter binding — not the service logic behind it.
 // GlobalExceptionHandler is package-private in another package, so it cannot be
-// @Import-ed here; the advice scan reaches it by reflection anyway.
 @WebMvcTest(AlertController.class)
+@Import(SecurityConfig.class)
 class AlertControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+    // SecurityConfig needs it to build the filter; the slice has no real one.
+    @MockitoBean
+    private JwtService jwtService;
 
     @MockitoBean
     private AlertService alertService;
@@ -45,6 +53,7 @@ class AlertControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     void listReturnsRuleCodesAsAnArray() throws Exception {
         when(alertService.findByStatus(eq(AlertStatus.OPEN), any()))
                 .thenReturn(new PageImpl<>(List.of(openAlert())));
@@ -64,6 +73,7 @@ class AlertControllerTest {
     // Key present with a null value: the client must be able to tell
     // "not reviewed" from "no such field".
     @Test
+    @WithMockUser(roles = "ANALYST")
     void unreviewedAlertKeepsANullReviewedAt() throws Exception {
         when(alertService.findByStatus(any(), any()))
                 .thenReturn(new PageImpl<>(List.of(openAlert())));
@@ -74,6 +84,7 @@ class AlertControllerTest {
 
     // status has no default, so omitting it is a client error, not an empty list.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void listWithoutStatusIsRejected() throws Exception {
         mockMvc.perform(get("/api/v1/alerts"))
                 .andExpect(status().isBadRequest());
@@ -84,6 +95,7 @@ class AlertControllerTest {
     // Enum binding failure is handled by Boot's defaults, not our
     // GlobalExceptionHandler: the status is right, the body shape is not ours.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void listWithUnknownStatusIsRejected() throws Exception {
         mockMvc.perform(get("/api/v1/alerts").param("status", "CLOSED"))
                 .andExpect(status().isBadRequest());
@@ -94,6 +106,7 @@ class AlertControllerTest {
     // The clamp happens before the service call, so the JSON body cannot show
     // it — capture the Pageable instead.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void oversizedPageIsTruncatedToTheMaximum() throws Exception {
         when(alertService.findByStatus(any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 100), 0));
@@ -111,6 +124,7 @@ class AlertControllerTest {
     // Sort is fixed server-side. Capturing proves the tie-breaker is appended;
     // a response body with distinct timestamps would prove nothing.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void listAlwaysSortsByCreatedAtThenId() throws Exception {
         when(alertService.findByStatus(any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -126,6 +140,7 @@ class AlertControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     void reviewReturnsTheUpdatedAlert() throws Exception {
         Alert reviewed = openAlert();
         reviewed.review(AlertStatus.CONFIRMED);
@@ -143,6 +158,7 @@ class AlertControllerTest {
     // boundary, so the client gets 400 instead of the entity's 500.
     // Asserting the title matters: a plain 400 could also be Tomcat's default.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void reviewingIntoOpenIsRejectedWithProblemDetail() throws Exception {
         mockMvc.perform(patch("/api/v1/alerts/7")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -155,6 +171,7 @@ class AlertControllerTest {
 
     // 404, not 400: the id is a well-formed long that points at nothing.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void reviewingAMissingAlertReturnsNotFound() throws Exception {
         when(alertService.review(eq(999999L), any()))
                 .thenThrow(new AlertNotFoundException(999999L));
@@ -169,6 +186,7 @@ class AlertControllerTest {
     // Bean Validation failures go through Boot's defaults, not
     // GlobalExceptionHandler — the same fact already pinned on the transaction side.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void reviewWithoutAStatusIsRejected() throws Exception {
         mockMvc.perform(patch("/api/v1/alerts/7")
                         .contentType(MediaType.APPLICATION_JSON)

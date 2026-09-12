@@ -9,15 +9,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.cathy.frauddetection.auth.JwtService;
+import com.cathy.frauddetection.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 
 // @Import pulls in GlobalExceptionHandler: it lives in a different package
 // (web, not transaction), and @WebMvcTest only auto-detects @ControllerAdvice
@@ -25,10 +30,13 @@ import org.springframework.test.web.servlet.MockMvc;
 // subpackages by default in some configurations — importing it explicitly
 // removes any doubt about whether it's on the classpath for this slice.
 @WebMvcTest(TransactionController.class)
+@Import(SecurityConfig.class)
 class TransactionControllerTest {
-
     @Autowired
     private MockMvc mockMvc;
+    // SecurityConfig needs it to build the filter; the slice has no real one.
+    @MockitoBean
+    private JwtService jwtService;
 
     // TransactionService is not a Web component, so @WebMvcTest never
     // constructs a real one. @MockitoBean replaces it in the context with a
@@ -54,6 +62,7 @@ class TransactionControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     void submitReturns202WithLocationHeader() throws Exception {
         when(service.submit(any())).thenReturn(42L);
 
@@ -67,6 +76,7 @@ class TransactionControllerTest {
     // Confirms DuplicateTransactionException maps to 409 with the RFC 9457
     // shape, not the 500 this project's Phase 1 originally shipped with.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void submitDuplicateReturns409WithProblemDetail() throws Exception {
         when(service.submit(any()))
                 .thenThrow(new DuplicateTransactionException("TX-CTRL-1"));
@@ -80,6 +90,7 @@ class TransactionControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     void searchWithInvalidCriteriaReturns400WithProblemDetail() throws Exception {
         when(service.search(any(), any()))
                 .thenThrow(new InvalidSearchCriteriaException("Cannot sort by: currency"));
@@ -91,6 +102,7 @@ class TransactionControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ANALYST")
     void searchReturns200WithPageBody() throws Exception {
         when(service.search(any(), any()))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
@@ -107,6 +119,7 @@ class TransactionControllerTest {
     // MethodArgumentNotValidException, this test will fail and force a
     // deliberate look at the new response shape instead of a silent change.
     @Test
+    @WithMockUser(roles = "ANALYST")
     void malformedRequestBodyBypassesGlobalExceptionHandler() throws Exception {
         String invalidCountry = """
                 {

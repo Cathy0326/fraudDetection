@@ -45,3 +45,10 @@ fraud:
     # kept counting down instead of being reset.
     window: 10s
     limit: 3
+
+jwt:
+  # Fixed test value. Production reads this from the environment and fails
+  # startup when it is unset; tests need determinism more than secrecy, and a
+  # secret that only exists in the test classpath grants nothing.
+  secret: test-only-secret-not-used-anywhere-outside-tests-0123456789
+  expiration: 1h
