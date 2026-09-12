@@ -67,6 +67,7 @@ management:
 logging:
   level:
     com.cathy.frauddetection: DEBUG
+    org.springframework.security: DEBUG
 
 fraud:
   rules:
