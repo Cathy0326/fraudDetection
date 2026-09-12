@@ -28,9 +28,10 @@
     <properties>
         <!-- Boot parent reads this to compile against Java 21. -->
         <java.version>21</java.version>
-        <!-- Boot's BOM does not manage Drools, so this is the one
-            dependency family whose version we pin ourselves. -->
+        <!-- Boot's BOM does not manage Drools, so this is one of two
+            dependency families whose version we pin ourselves. -->
         <drools.version>10.2.0</drools.version>
+        <jjwt.version>0.13.0</jjwt.version>
     </properties>
 
     <dependencies>
@@ -139,6 +140,41 @@
         </dependency>
 
         <!-- ==================================================== -->
+        <!-- GROUP F: AUTHENTICATION (Phase 9)                    -->
+        <!-- ==================================================== -->
+
+        <!-- Filter chain, AuthenticationManager, BCryptPasswordEncoder.
+             Adding this starter alone locks down every endpoint and enables
+             a generated login form; SecurityConfig replaces those defaults
+             with a stateless JWT chain. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- JWT is not part of Spring Security, so the library is separate.
+             jjwt ships api/impl/jackson as three artifacts on purpose: only
+             the api is compile-scoped, so application code cannot import
+             implementation classes even by accident. -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ==================================================== -->
         <!-- GROUP B: TEST (cross-cutting, from Phase 1 on)       -->
         <!-- scope=test: for tests only, never shipped            -->
         <!-- ==================================================== -->
@@ -161,6 +197,14 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- @WithMockUser and the security-aware MockMvc post-processors.
+     Not bundled in starter-test. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 
