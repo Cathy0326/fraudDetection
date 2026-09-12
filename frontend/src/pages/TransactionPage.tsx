@@ -30,6 +30,12 @@ export function TransactionPage() {
             .catch(() => {
                 if (ignore) return
                 setError('Failed to load transactions.')
+                // Trap: clear the rows too. Leaving the previous page's data in
+                // place under an error message shows numbers the user has no
+                // reason to trust -- they belong to a request that succeeded
+                // earlier, not to the one that just failed.
+                setTransactions([])
+                setTotalElements(0)
             })
             .finally(() => {
                 if (ignore) return
@@ -43,52 +49,60 @@ export function TransactionPage() {
 
     const totalPages = Math.ceil(totalElements / PAGE_SIZE)
 
+    // Decision: these four states are mutually exclusive and ordered by how much
+    // we actually know. Rendering them as independent `&&` blocks let an error
+    // message and an empty table appear at the same time -- two contradictory
+    // claims about the same request.
+    function renderBody() {
+        if (loading) return <p className="empty">Loading...</p>
+        if (error) return <p className="error" role="alert">{error}</p>
+        if (transactions.length === 0) return <p className="empty">No transactions.</p>
+
+        return (
+            <table>
+                <thead>
+                <tr>
+                    <th>Ref</th>
+                    <th>Account</th>
+                    <th className="num">Amount</th>
+                    <th>Country</th>
+                    <th>Status</th>
+                    <th className="num">Risk score</th>
+                    <th>Decision</th>
+                </tr>
+                </thead>
+                <tbody>
+                {transactions.map((tx) => (
+                    <tr key={tx.id}>
+                        <td>{tx.transactionRef}</td>
+                        <td>{tx.accountId}</td>
+                        {/* amount stays a string here -- it came from the backend as one
+                            (BigDecimal serializes to JSON string, not a number), and
+                            display doesn't need arithmetic, so there's no reason to
+                            parse it and risk reintroducing float precision issues. */}
+                        <td className="num">{tx.amount} {tx.currency}</td>
+                        <td>{tx.destinationCountry}</td>
+                        <td>{tx.status}</td>
+                        <td className="num">{tx.riskScore ?? '—'}</td>
+                        <td>{tx.decision ?? '—'}</td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
+        )
+    }
+
     return (
         <div>
             <h1>Transactions</h1>
 
-            {error && <p role="alert">{error}</p>}
+            {renderBody()}
 
-            {loading ? (
-                <p>Loading...</p>
-            ) : (
-                <table>
-                    <thead>
-                    <tr>
-                        <th>Ref</th>
-                        <th>Account</th>
-                        <th>Amount</th>
-                        <th>Country</th>
-                        <th>Status</th>
-                        <th>Risk score</th>
-                        <th>Decision</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {transactions.map((tx) => (
-                        <tr key={tx.id}>
-                            <td>{tx.transactionRef}</td>
-                            <td>{tx.accountId}</td>
-                            {/* amount stays a string here -- it came from the backend as one
-                    (BigDecimal serializes to JSON string, not a number), and
-                    display doesn't need arithmetic, so there's no reason to
-                    parse it and risk reintroducing float precision issues. */}
-                            <td>{tx.amount} {tx.currency}</td>
-                            <td>{tx.destinationCountry}</td>
-                            <td>{tx.status}</td>
-                            <td>{tx.riskScore ?? '—'}</td>
-                            <td>{tx.decision ?? '—'}</td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            )}
-
-            <div>
+            <div className="pagination">
                 <button disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
                     Previous
                 </button>
-                <span> Page {page + 1} of {totalPages || 1} </span>
+                <span>Page {page + 1} of {totalPages || 1}</span>
                 <button
                     disabled={page + 1 >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
