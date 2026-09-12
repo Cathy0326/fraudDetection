@@ -91,4 +91,10 @@ jwt:
   # available exit. 1h is the balance for a dashboard session.
   expiration: 1h
 
+seed:
+  # Both optional: when unset, no user is created and a warning is logged.
+  # Unlike jwt.secret, a missing value here does not stop the app working —
+  # it only means nobody can log in yet.
+  admin-password: ${SEED_ADMIN_PASSWORD:}
+  analyst-password: ${SEED_ANALYST_PASSWORD:}
 
