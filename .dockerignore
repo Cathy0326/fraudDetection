@@ -1,0 +1,32 @@
+# Build outputs. The image builds these itself from source; copying local
+# copies in risks baking a stale frontend bundle into the jar.
+target/
+frontend/node_modules/
+frontend/dist/
+src/main/resources/static/
+
+# Git history. Changes on every commit, so leaving it in busts the layer
+# cache on every build, and nothing in the build reads it.
+.git/
+.gitignore
+
+# IDE and editor state.
+.idea/
+*.iml
+.vscode/
+
+# Local dev scratch: manual test payloads, PowerShell probes, scan config.
+body.json
+post-alerts.ps1
+post-metrics.ps1
+qodana.yaml
+*.log
+.env
+*.local
+
+# Docker and docs. Not copied into any stage; excluding them keeps edits
+# to these files from invalidating cached dependency layers.
+Dockerfile
+.dockerignore
+docker-compose.yml
+README.md
