@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getTransactions } from '../api/transactions'
 import type { TransactionResponse } from '../types/transaction'
+import { errorMessage } from '../api/client'
 
 const PAGE_SIZE = 20
 
@@ -27,20 +28,15 @@ export function TransactionPage() {
                 setTransactions(data.content)
                 setTotalElements(data.totalElements)
             })
-            .catch(() => {
+            .catch((err) => {
                 if (ignore) return
-                setError('Failed to load transactions.')
-                // Trap: clear the rows too. Leaving the previous page's data in
-                // place under an error message shows numbers the user has no
-                // reason to trust -- they belong to a request that succeeded
-                // earlier, not to the one that just failed.
+                setError(errorMessage(err, 'Failed to load transactions.'))
                 setTransactions([])
                 setTotalElements(0)
-            })
-            .finally(() => {
-                if (ignore) return
-                setLoading(false)
-            })
+            })           .finally(() => {
+            if (ignore) return
+            setLoading(false)
+        })
 
         return () => {
             ignore = true

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getAlerts, reviewAlert } from '../api/alerts'
 import type { AlertResponse } from '../types/alert'
+import { errorMessage } from '../api/client'
 
 export function AlertPage() {
     const [alerts, setAlerts] = useState<AlertResponse[]>([])
@@ -33,17 +34,14 @@ export function AlertPage() {
                 if (cancelledRef.current) return
                 setAlerts(data.content)
             })
-            .catch(() => {
+            .catch((err) => {
                 if (cancelledRef.current) return
-                setLoadError('Failed to load alerts.')
-                // Clear the rows too: keeping stale rows under an error message
-                // shows data from a request that succeeded earlier, not this one.
+                setLoadError(errorMessage(err, 'Failed to load alerts.'))
                 setAlerts([])
-            })
-            .finally(() => {
-                if (cancelledRef.current) return
-                if (showLoading) setLoading(false)
-            })
+            })           .finally(() => {
+            if (cancelledRef.current) return
+            if (showLoading) setLoading(false)
+        })
     }
 
     useEffect(() => {
@@ -66,14 +64,10 @@ export function AlertPage() {
         setReviewError(null)
         try {
             await reviewAlert(id, outcome)
-            // Decision: pessimistic update. Don't splice the reviewed row out of
-            // local state by hand -- refetch from the server, which is the single
-            // source of truth for "which alerts are still OPEN". Hand-patching
-            // local state here risks drifting from the server if this request
-            // raced with another change.
             loadAlerts(false)
-        } catch {
-            setReviewError('Failed to submit review. Please try again.')
+        } catch (err) {
+            if (cancelledRef.current) return
+            setReviewError(errorMessage(err, 'Failed to submit review. Please try again.'))
         } finally {
             if (!cancelledRef.current) setReviewingId(null)
         }
