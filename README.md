@@ -27,6 +27,12 @@ country on a high-risk list, and more transactions in the time window than the
 configured limit. Each contributes an equal weight, because no historical fraud
 data exists here to justify ranking one signal above another.
 
+## Screens
+
+| Transactions | Sign in |
+| --- | --- |
+| ![Transaction list](docs/images/transactions.png) | ![Sign in](docs/images/login.png) |
+
 ## Architecture
 
 ![System architecture](docs/images/architecture.svg)
