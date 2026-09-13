@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TransactionPage } from './pages/TransactionPage'
 import { AlertPage } from './pages/AlertPage'
+import { LoginPage } from './pages/LoginPage'
+import { clearToken, getToken, setOnTokenCleared } from './api/auth'
 import './App.css'
 
 // Decision: a plain useState tab switch, not react-router. Neither page needs
@@ -15,6 +17,20 @@ const TABS: { id: Tab; label: string }[] = [
 
 function App() {
     const [activeTab, setActiveTab] = useState<Tab>('transactions')
+    // Lazy initialiser: reads storage once on mount, not on every render.
+    const [authed, setAuthed] = useState(() => getToken() !== null)
+
+    // The 401 interceptor runs outside React and clears the token. This is the
+    // bridge that turns that into a re-render -- without it the app keeps
+    // showing the logged-in view against a token that no longer exists.
+    useEffect(() => {
+        setOnTokenCleared(() => setAuthed(false))
+        return () => setOnTokenCleared(null)
+    }, [])
+
+    if (!authed) {
+        return <LoginPage onSuccess={() => setAuthed(true)} />
+    }
 
     return (
         <div className="app">
@@ -35,6 +51,9 @@ function App() {
                         {label}
                     </button>
                 ))}
+                <button type="button" className="tab" onClick={() => clearToken()}>
+                    Sign out
+                </button>
             </nav>
 
             <main role="tabpanel">

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import {clearToken, getToken} from "./auth";
 
 // '/api' works unchanged in both environments: dev goes through vite's
 // server.proxy, prod is same-origin from the jar. No environment branching.
@@ -51,12 +52,32 @@ export function errorMessage(error: unknown, fallback: string): string {
     return detail ?? fallback
 }
 
+// Attaches the token to every outgoing call. Doing it here rather than in each
+// api module means a new endpoint cannot forget it and silently 401.
+apiClient.interceptors.request.use((config) => {
+    const token = getToken()
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+})
+
 // Log and re-throw, never swallow -- call sites decide how to present failure.
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
         const { kind, detail } = classifyError(error)
         console.error(`API ${kind} error:`, detail ?? (error as Error).message)
+
+        // Two different 401s. On /auth/login it means "wrong password" and the
+        // login form must show that. Anywhere else it means the stored token is
+        // expired or forged, so drop it -- otherwise every later request keeps
+        // sending a token that will never work again.
+        const isLoginAttempt = error.config?.url?.includes('/auth/login')
+        if (error.response?.status === 401 && !isLoginAttempt) {
+            clearToken()
+        }
+
         return Promise.reject(error)
     }
 )
