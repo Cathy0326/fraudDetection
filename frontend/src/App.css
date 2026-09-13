@@ -164,3 +164,45 @@
   gap: 8px;
   white-space: nowrap;
 }
+
+/* Login sits outside .app, so it needs its own layout rules. */
+.login {
+  max-width: 320px;
+  margin: 4rem auto;
+  padding: 2rem;
+}
+
+.login h1 {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Stack label above input: the browser default puts them inline, which reads
+   as an unfinished form. */
+.login form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.login input {
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: inherit;
+}
+
+.login button {
+  padding: 0.55rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+
+.login .error {
+  color: #f08a8a;
+  font-size: 0.9rem;
+  margin: 0.25rem 0;
+}
