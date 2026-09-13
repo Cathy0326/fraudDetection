@@ -75,5 +75,35 @@ services:
       retries: 10
       start_period: 20s   # KRaft formats its storage on first boot
 
+  app:
+    build: .
+    container_name: fraud-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      # service_healthy, not just "started": Postgres accepts TCP before initdb
+      # finishes, and the app exits if its first connection fails.
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      # Relaxed binding: these override application.yml without editing it.
+      # Service names, not localhost — inside the compose network localhost is this container.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/frauddb
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # spring-boot-docker-compose is a runtime dependency baked into the jar.
+      # Inside the container there is no compose file and no Docker client.
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      # :? makes `docker compose up` fail loudly instead of starting a broken container.
+      JWT_SECRET: ${JWT_SECRET:?set it in .env, see .env.example}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?set it in .env}
+      SEED_ANALYST_PASSWORD: ${SEED_ANALYST_PASSWORD:?set it in .env}
+    labels:
+      org.springframework.boot.ignore: "true"
+
 volumes:
   pgdata:
