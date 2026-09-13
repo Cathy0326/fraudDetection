@@ -1,8 +1,16 @@
 param([string]$Suffix = "M01")
 
+$base = "http://localhost:8080/api/v1"
 $acct = "ACC-MET-$Suffix"
-$url  = "http://localhost:8080/api/v1/transactions"
 $now  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+# Credentials live in login.json, which is gitignored. Nothing secret in this file.
+if (-not (Test-Path "$PWD\login.json")) { throw "login.json missing" }
+$loginRaw = curl.exe -s -X POST "$base/auth/login" `
+    -H "Content-Type: application/json" --data-binary "@login.json"
+$token = ($loginRaw | ConvertFrom-Json).token
+if (-not $token) { throw "no token in login response: $loginRaw" }
+Write-Host "token acquired ($($token.Length) chars)"
 
 # Three small IE transactions, then one large IR: the fourth trips all three
 # rules at once (amount > 10000, high-risk country, velocity > limit).
@@ -30,8 +38,10 @@ foreach ($c in $cases) {
     [IO.File]::WriteAllText("$PWD\body.json", $json, (New-Object Text.UTF8Encoding $false))
 
     # curl.exe, not curl: in PowerShell "curl" is an alias for Invoke-WebRequest.
-    $code = curl.exe -s -o NUL -w "%{http_code}" -X POST $url `
-        -H "Content-Type: application/json" --data-binary "@body.json"
+    $code = curl.exe -s -o NUL -w "%{http_code}" -X POST "$base/transactions" `
+        -H "Content-Type: application/json" `
+        -H "Authorization: Bearer $token" `
+        --data-binary "@body.json"
 
     Write-Host "$($c.ref)  ->  $code"
 }

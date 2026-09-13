@@ -45,16 +45,16 @@ services:
     image: apache/kafka:4.1.2
     container_name: fraud-kafka
     ports:
-      - "9092:9092"   # 9093 is controller-internal; the host never calls it
+      - "29092:29092"   # host-facing listener; 9092 and 9093 stay container-internal
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      # LISTENERS = what the broker binds to.
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      # ADVERTISED_LISTENERS = the address clients are told to reconnect on
-      # after bootstrap. Wrong value = connects but can't produce or consume.
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      # Two listeners on different ports. One address cannot be correct for both
+      # the host and the compose network, because "localhost" means a different
+      # machine in each.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,HOST://0.0.0.0:29092, CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,HOST:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
